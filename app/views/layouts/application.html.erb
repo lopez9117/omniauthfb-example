@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>LoginWithFacebook</title>
+  <%= stylesheet_link_tag    'application', media: 'all', 'data-turbolinks-track' => true %>
+  <%= javascript_include_tag 'application', 'data-turbolinks-track' => true %>
+  <%= csrf_meta_tags %>
+</head>
+<body>
+  <div class="blog-masthead">
+    <div class="container">
+      <nav class="blog-nav">
+        <a class="blog-nav-item active" href="<%= root_path %>">Home</a>
+        <% if user_signed_in? %>
+          <%= link_to('Logout', destroy_user_session_path, :method => :delete, class: 'blog-nav-item') %>
+        <% else %>
+          <%= link_to('Login', new_user_session_path, class: 'blog-nav-item')%>
+          <%= link_to "Sign in with Facebook", user_omniauth_authorize_path(:facebook), class: 'blog-nav-item' %>
+        <% end %>
+      </nav>
+    </div>
+  </div>
+  
+<p><%= notice %></p>
+  <%= yield %>
+
+</body>
+</html>

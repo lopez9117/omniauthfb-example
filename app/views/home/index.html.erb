@@ -1,0 +1,96 @@
+<div class="container">
+
+  <div class="blog-header">
+    <h1 class="blog-title">Devise + Omniath Facebook</h1>
+    <p class="lead blog-description">Tutorial para incluir login con facebook con omniauth y devise.</p>
+  </div>
+
+  <div class="row">
+
+    <div class="col-sm-8 blog-main">
+
+      <div class="blog-post">
+        <p>Utilizaremos la gema <%= link_to 'Omniauth Facebook', 'https://github.com/mkdynamic/omniauth-facebook', target: '_blank'%> para incluir el login con una cuenta de facebook</p> 
+
+        <h2>Crear cuenta developer facebook</h2>
+        <p>Para permitir sign in con facebook debemos crear una cuenta de developer en facebook para tener un APP ID y un APP SECRET de acceso. En el siguiente link se encuentra una guia de como convertir tu cuenta de facebook a developer y configurar una nueva app <%= link_to 'how to create a facebook developer account', 'https://developers.facebook.com/docs/apps/register', target: '_blank' %>.</p>
+
+        <h2>Crear una app Rails</h2>
+        <p>Hacemos los pasos que ya conocemos para realizar login con <%= link_to 'Devise', 'https://github.com/plataformatec/devise', target: '_blank' %>.</p>
+
+        <p>Agregamos la gema omniauth facebook.</p>
+        <pre><code>gem 'omniauth-facebook'</code></pre>
+        <p>Omniauth te permite hacer login desde diferentes proveedores ( twitter, google, linkedin) por lo tanto es importante almacenar desde que provedor se esta logeando y un uid que identifica que el usuario permitio el acceso a facebook.</p>
+        <p>Por lo tanto debemos añadir el campo provider (string) y uid(string) en nuestra base de datos.</p>
+        <pre><code>rails g migration AddFieldsToUsers provider uid
+rake db:migrate</code></pre>
+        <p>En el archivo config/initializers/devise.rb agregamos la siguiente linea de configuración.</p>
+        <pre><code>config.omniauth :facebook, "APP_ID", "APP_SECRET"</code></pre>
+        <p>Además en tu modelo user agregamos la siguiente linea</p>
+        <pre><code>devise :omniauthable, :omniauth_providers => [:facebook]</code></pre>
+        <p>De esta forma se agregan automaticamente dos rutas nuevas a nuestra aplicación</p>
+        <ul>
+          <li>user_omniauth_authorize_path para autorizar el login.</li>
+          <li>user_omniauth_callback_path para recibir la respuesta de autorización con los datos del usuario.</li>
+        </ul>
+        <p>Mediante el siguiente link tendriamos acceso a login con facebook</p>
+        <pre><code> link_to "Sign in with Facebook", user_omniauth_authorize_path(:facebook) </code></pre>
+        <p>De esta forma el usuario da click en el link y lo envia a facebook para confirmar el acceso, despues facebook envía un callback a  nuestra aplicación con a info del usuario. Por lo tanto es importante configurar la ruta del callback al que va a llegar la respuesta. Lo hacemos de la siguiente forma en el archivo routes.rb</p>
+        <pre><code>devise_for :users, :controllers => { :omniauth_callbacks => "users/omniauth_callbacks" }</code></pre>
+        <p>Ahora necesitamos crear el controller OmniauthCallbacksController con un action que se llame igual que provider que nos envia la respuesta, en este caso facebook. Creamos una carpeta users dentro de la carpeta controllers y ahi creamos el archivo omniauth_callbacks_controller.rb</p>
+        <%= image_tag 'controller.png' %>
+        <p>Esta es la funcionalidad de ejemplo que tendra el action facebook. </p>
+        <pre><code>
+  def facebook
+    # Debe crearse el método from_omniauth model (e.g. app/models/user.rb)
+    @user = User.from_omniauth(request.env["omniauth.auth"])
+
+    if @user.persisted?
+      sign_in_and_redirect @user, :event => :authentication
+      set_flash_message(:notice, :success, :kind => "Facebook") if
+      is_navigational_format?
+    else
+      session["devise.facebook_data"] = request.env["omniauth.auth"]
+      redirect_to new_user_registration_url
+    end
+  end
+
+  def failure
+    redirect_to root_path
+  end</code></pre>
+        <p>Ahora en el modelo user.rb agregamos los métodos usados en el controlador.
+        </p>
+        <pre><code>
+  def self.from_omniauth(auth)
+    where(provider: auth.provider, uid: auth.uid).first_or_create do |user|
+      user.email = auth.info.email
+      user.password = Devise.friendly_token[0,20]
+      user.name = auth.info.name   # assuming the user model has a name
+      user.image = auth.info.image # assuming the user model has an image
+    end
+  end
+        </code></pre>
+        <p>También es necesario re-escribir el método new_with_session que se utiliza en el registration controller</p>
+        <pre><code>
+  def self.new_with_session(params, session)
+    super.tap do |user|
+      if data = session["devise.facebook_data"] && session["devise.facebook_data"]["extra"]["raw_info"]
+        user.email = data["email"] if user.email.blank?
+      end
+    end
+  end
+        </code></pre>
+        <p>Y listo ya podemos hacer login con facebook desde nuestra app web.</p>
+      </div><!-- /.blog-post -->
+
+    </div><!-- /.blog-main -->
+
+  </div><!-- /.row -->
+
+</div><!-- /.container -->
+
+
+
+
+
+
